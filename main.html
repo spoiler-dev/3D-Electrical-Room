@@ -1,0 +1,939 @@
+<script>
+
+
+    var list = {"List":[{"describ":[{"CABINET_NAME":"斗轮电源柜","CABINET_COORDINATE":"-275,0,-110","CABINET_TYPE":"0","DESCRIB_COORDINATE":"-340,280,-105"},{"CABINET_NAME":"俯仰柜","CABINET_COORDINATE":"5,0,-110","CABINET_TYPE":"0","DESCRIB_COORDINATE":"-60,280,-105"},{"CABINET_NAME":"旋转柜","CABINET_COORDINATE":"275,0,-110","CABINET_TYPE":"0","DESCRIB_COORDINATE":"210,280,-105"},{"CABINET_NAME":"上层PLC柜","CABINET_COORDINATE":"-275,0,150","CABINET_TYPE":"0","DESCRIB_COORDINATE":"-340,280,155"},{"CABINET_NAME":"空调","CABINET_COORDINATE":"275,0,150","CABINET_TYPE":"1","DESCRIB_COORDINATE":"210,280,155"}],"equipInfo":[{"eqName":"0330100103","EQ_COORDINATE":"-300,220,-210","Quality":"OPC_QUALITY_GOOD","State":"0","Num":"1","eqType":"03"},{"eqName":"0330100202","EQ_COORDINATE":"-240,220,-210","Quality":"OPC_QUALITY_GOOD","State":"0","Num":"2","eqType":"02"},{"eqName":"0330100325","EQ_COORDINATE":"-300,220,-140","Quality":"OPC_QUALITY_GOOD","State":"0","Num":"3","eqType":"25"},{"eqName":"0330200403","EQ_COORDINATE":"-20,220,-210","Quality":"OPC_QUALITY_GOOD","State":"0","Num":"4","eqType":"03"},{"eqName":"0330200502","EQ_COORDINATE":"40,220,-210","Quality":"OPC_QUALITY_GOOD","State":"0","Num":"5","eqType":"02"},{"eqName":"0330200625","EQ_COORDINATE":"-20,220,-141","Quality":"OPC_QUALITY_GOOD","State":"0","Num":"6","eqType":"25"},{"eqName":"0330300703","EQ_COORDINATE":"250,220,-210","Quality":"OPC_QUALITY_GOOD","State":"1","Num":"7","eqType":"03"},{"eqName":"0330300802","EQ_COORDINATE":"310,220,-210","Quality":"OPC_QUALITY_GOOD","State":"0","Num":"8","eqType":"02"},{"eqName":"0330300925","EQ_COORDINATE":"250,220,-140","Quality":"OPC_QUALITY_GOOD","State":"0","Num":"9","eqType":"25"},{"eqName":"0330401003","EQ_COORDINATE":"-300,220,50","Quality":"OPC_QUALITY_GOOD","State":"0","Num":"10","eqType":"03"},{"eqName":"0330401102","EQ_COORDINATE":"-240,220,50","Quality":"OPC_QUALITY_GOOD","State":"0","Num":"11","eqType":"02"},{"eqName":"0330401225","EQ_COORDINATE":"-300,220,120","Quality":"OPC_QUALITY_GOOD","State":"0","Num":"12","eqType":"25"},{"eqName":"0330501303","EQ_COORDINATE":"250,220,50","Quality":"OPC_QUALITY_GOOD","State":"0","Num":"13","eqType":"03"},{"eqName":"0330501402","EQ_COORDINATE":"310,220,50","Quality":"OPC_QUALITY_GOOD","State":"0","Num":"14","eqType":"02"}]}]}
+    var scene, camera;
+    var renderer;
+    var stop;
+    // 请求单个电气室相关信息
+    function room(partCode, inxx) {
+      clearTimeout(boxTime);
+      clearTimeout(roomTime);
+      clearInterval(interruptTime);
+      clearInterval(faultTime);
+      clearInterval(fireTime);
+      (scene) && clearThree(scene);
+      cancelAnimationFrame(stop);
+      // clearTimeout(roomTime);
+      $.post(
+        baseURL + "/fiSafety.htm?param_act=fiSafetySingleRoomInfo",
+        {
+          partCode: partCode
+        },
+        function(result, state) {
+          var partData = JSON.parse(result);
+          if (state == "success") {
+            var describArr = partData.List[0].describ;
+            // 烟感
+            var arr1 = [];
+            // 温感
+            var arr2 = [];
+            // 控制器
+            var arr3 = [];
+            var machinePositionArr = [];
+            var airPositionArr = [];
+            var smokePositionArr = [];
+            var temperaturePositionArr = [];
+            var controllerPositionArr = [];
+            var fontPositionArr = [];
+            var describArr = [];
+            $.each(partData.List[0].describ, function(index, val) {
+              if (val.CABINET_TYPE == "0") {
+                machinePositionArr.push(val.CABINET_COORDINATE.split(","));
+              } else if (val.CABINET_TYPE == "1") {
+                airPositionArr.push(val.CABINET_COORDINATE.split(","));
+              }
+              fontPositionArr.push(val.DESCRIB_COORDINATE.split(","));
+              describArr.push(val.CABINET_NAME);
+            });
+
+            $.each(partData.List[0].equipInfo, function(index, val) {
+              // 温感
+              if (val.eqType == "02") {
+                temperaturePositionArr.push(val.EQ_COORDINATE.split(","));
+                // 连接正常
+                if (val.Quality == "OPC_QUALITY_GOOD") {
+                  if (val.State == "0") {
+                    arr1.push("normal");
+                  } else if (val.State == "1") {
+                    arr1.push("fire");
+                  } else if (val.State == "4") {
+                    arr1.push("fault");
+                  }
+                } else if (val.Quality == "OPC_QUALITY_NOT_CONNECTED") {
+                  arr1.push("interrupt");
+                }
+                // 烟感
+              } else if (val.eqType == "03") {
+                smokePositionArr.push(val.EQ_COORDINATE.split(","));
+                if (val.Quality == "OPC_QUALITY_GOOD") {
+                  if (val.State == "0") {
+                    arr2.push("normal");
+                  } else if (val.State == "1") {
+                    arr2.push("fire");
+                  } else if (val.State == "4") {
+                    arr2.push("fault");
+                    console.log("4");
+                  }
+                } else if (val.Quality == "OPC_QUALITY_NOT_CONNECTED") {
+                  arr2.push("interrupt");
+                }
+                // 控制器
+              } else if (val.eqType == "25" || "29") {
+                controllerPositionArr.push(val.EQ_COORDINATE.split(","));
+                if (val.Quality == "OPC_QUALITY_GOOD") {
+                  if (val.State == "0") {
+                    arr3.push("normal");
+                  } else if (val.State == "1") {
+                    arr3.push("fire");
+                  } else if (val.State == "4") {
+                    arr3.push("fault");
+                    console.log("4");
+                  }
+                } else if (val.Quality == "OPC_QUALITY_NOT_CONNECTED") {
+                  arr3.push("interrupt");
+                }
+              }
+            });
+
+            _this.$nextTick(() => {
+              var width, height;
+              // var stats
+              var config = {
+                isMobile: false,
+                background: 0x1e1e24
+              };
+              width = $(".roomZone .content-box")
+                .eq(inxx - 1)
+                .width();
+              height = $(".roomZone .content-box")
+                .eq(inxx - 1)
+                .height();
+
+              scene = new THREE.Scene(); // 新建一个场景
+              scene.position.z = 120;
+              camera = new THREE.PerspectiveCamera(
+                35,
+                width / height,
+                0.1,
+                3000
+              ); // 新建一个透视摄像机, 并设置 视场, 视野长宽比例, 可见远近范围
+              // 摄像机的位置
+              camera.position.set(0, 1000, 1100);
+              camera.lookAt(new THREE.Vector3(0, 2500, 0)); // 设置摄像机观察的方向
+
+              renderer = new THREE.WebGLRenderer({
+                antialias: true
+              }); // 新建一个渲染器, 渲染器用来输出最终结果
+              renderer.setSize(width, height); // 设置渲染的尺寸, 在这里是浏览器尺寸
+              renderer.setClearColor(config.background); // 设置背景的颜色
+              renderer.shadowMap.enabled = true; // 设置是否开启投影, 开启的话, 光照会产生投影
+              renderer.shadowMap.type = THREE.PCFSoftShadowMap; // 设置投影类型, 这边是柔和投影
+              renderer.position;
+              // document.body.appendChild(renderer.domElement) // renderer.domElement 是渲染器用来显示结果的 canvas 标签
+              /*  document.getElementById('ddd').appendChild(renderer.domElement); */
+              $(".roomZone .content-box").html("");
+              if (inxx > 0) {
+                $(".roomZone .content-box")
+                  .eq(inxx - 1)
+                  .append(renderer.domElement);
+              }
+
+              // 检查客户端
+              checkUserAgent();
+              // 设置辅助线 以及鼠标插件
+              buildAuxSystem();
+              // 设置光照
+              buildLightSystem();
+              // 构造建筑物
+              buildbuilding(
+                arr1,
+                arr2,
+                arr3,
+                machinePositionArr,
+                airPositionArr,
+                smokePositionArr,
+                temperaturePositionArr,
+                controllerPositionArr,
+                fontPositionArr,
+                describArr
+              );
+              loop();
+              onWindowResize(inxx);
+
+              function checkUserAgent() {
+                var n = navigator.userAgent;
+                if (
+                  n.match(/Android/i) ||
+                  n.match(/webOS/i) ||
+                  n.match(/iPhone/i) ||
+                  n.match(/iPad/i) ||
+                  n.match(/iPod/i) ||
+                  n.match(/BlackBerry/i)
+                ) {
+                  config.isMobile = true;
+                  camera.position.set(420, 420, 420);
+                  renderer.shadowMap.enabled = false;
+                }
+              }
+
+              function buildbuilding(
+                arr1,
+                arr2,
+                arr3,
+                machinePositionArr,
+                airPositionArr,
+                smokePositionArr,
+                temperaturePositionArr,
+                controllerPositionArr,
+                fontPositionArr,
+                describArr
+              ) {
+                // 创建底座 长/宽/高
+                var planeGeometry = new THREE.BoxBufferGeometry(1000, 10, 600);
+                // 设置材质
+                var texturePlane = new THREE.TextureLoader().load(
+                  "../../static/3D/img/floor.jpg"
+                );
+                texturePlane.wrapS = THREE.RepeatWrapping;
+                texturePlane.wrapT = THREE.RepeatWrapping;
+                texturePlane.repeat.set(8, 8);
+                var materialPlane = new THREE.MeshLambertMaterial({
+                  map: texturePlane,
+                  color: 0xc6e2ff
+                });
+                var plane = new THREE.Mesh(planeGeometry, materialPlane);
+                plane.rotation.z = -Math.PI;
+                // 网格线上浮
+                plane.position.y = -1;
+                // 添加网格线
+                scene.add(plane);
+
+                fontModel(fontPositionArr, describArr);
+                machine(machinePositionArr);
+                air(airPositionArr);
+                smoke(smokePositionArr, arr1);
+                temperature(temperaturePositionArr, arr2);
+                controller(controllerPositionArr, arr3);
+
+                // 创建3D文字
+                function fontModel(fontPositionArr, describArr) {
+                  var fontModel;
+                  var font;
+                  var loader = new THREE.FontLoader();
+                  var fontPosition = fontPositionArr;
+                  var fontarray = describArr;
+                  loader.load(
+                    "../../static/3D/font/MicrosoftYaHei_Regular.json",
+                    function(res) {
+                      for (var i = 0; i < fontPosition.length; i++) {
+                        font = new THREE.TextBufferGeometry(fontarray[i], {
+                          font: res,
+                          size: 11,
+                          height: 1
+                        });
+                        font.computeBoundingBox(); // 运行以后设置font的boundingBox属性对象，如果不运行无法获得。
+                        var material = new THREE.MeshLambertMaterial({});
+                        fontModel = new THREE.Mesh(font, material);
+                        //设置位置
+                        var fontClone = fontModel.clone();
+                        fontClone.position.set(
+                          fontPosition[i][0],
+                          fontPosition[i][1],
+                          fontPosition[i][2]
+                        );
+                        scene.add(fontClone);
+                      }
+                    }
+                  );
+                }
+
+                // 烟感
+                function smoke(smokePositionArr, flag) {
+                  var smokePosition = smokePositionArr;
+                  for (var i = 0; i < smokePosition.length; i++) {
+                    var smoke = createSmoke(
+                      smokePosition[i][0],
+                      smokePosition[i][1],
+                      smokePosition[i][2]
+                    );
+                    alarm(smoke.children[2], flag[i]);
+                    scene.add(smoke);
+                  }
+                }
+
+                // 烟感模型
+                function createSmoke(x, y, z) {
+                  var smoke = new THREE.Object3D();
+                  var smokeBaseGeometry = new THREE.CylinderGeometry(
+                    20,
+                    20,
+                    10,
+                    40,
+                    5
+                  );
+                  var smokeBase = utils.makeMesh(
+                    "phong",
+                    smokeBaseGeometry,
+                    0xe8e8e8
+                  );
+                  smokeBase.position.set(0, 96, 0);
+                  smoke.add(smokeBase);
+
+                  var smokeUpGeometry = new THREE.CylinderGeometry(
+                    16,
+                    16,
+                    4,
+                    40,
+                    5
+                  );
+                  var smokeUp = utils.makeMesh(
+                    "glass",
+                    smokeUpGeometry,
+                    0x008b00,
+                    0.4
+                  );
+                  /* smokeUp.rotation.x = 0.5*Math.PI */
+                  smokeUp.position.set(0, 102, 0);
+                  smoke.add(smokeUp);
+
+                  var smokeCoverGeometry = new THREE.CylinderGeometry(
+                    8,
+                    10,
+                    5,
+                    40,
+                    5
+                  );
+                  var smokeCover = utils.makeMesh(
+                    "phong",
+                    smokeCoverGeometry,
+                    0xe8e8e8
+                  );
+                  /* smokeUp.rotation.x = 0.5*Math.PI */
+                  smokeCover.position.set(0, 106, 0);
+                  smoke.add(smokeCover);
+                  smoke.position.set(x, y, z);
+
+                  return smoke;
+                }
+
+                // 温感
+                function temperature(temperatureArr, flag) {
+                  var temperaturePosition = temperatureArr;
+                  for (var i = 0; i < temperaturePosition.length; i++) {
+                    var temperature = createTemperature(
+                      temperaturePosition[i][0],
+                      temperaturePosition[i][1],
+                      temperaturePosition[i][2]
+                    );
+                    alarm(temperature.children[2], flag[i]);
+                    scene.add(temperature);
+                  }
+                }
+
+                // 温感模型
+                function createTemperature(x, y, z) {
+                  var temperature = new THREE.Object3D();
+                  // var temperatureBaseGeometry = new THREE.CylinderGeometry(5,8,1,40,40)
+                  // var temperatureBase = utils.makeMesh('phong',temperatureBaseGeometry,0xE8E8E8)
+                  // temperatureBase.position.set(-104,96,-50)
+                  // temperature.add(temperatureBase)
+                  var temperaturePillarGeometry = new THREE.CylinderGeometry(
+                    20,
+                    20,
+                    10,
+                    40,
+                    40
+                  );
+                  var temperaturePillar = utils.makeMesh(
+                    "phong",
+                    temperaturePillarGeometry,
+                    0xe8e8e8
+                  );
+                  temperaturePillar.position.set(0, 96, 0);
+                  temperature.add(temperaturePillar);
+
+                  var temperatureUpGeometry = new THREE.CylinderGeometry(
+                    20,
+                    20,
+                    8,
+                    40,
+                    5
+                  );
+                  var temperatureUp = utils.makeMesh(
+                    "glass",
+                    temperatureUpGeometry,
+                    0x000080,
+                    0.8
+                  );
+                  /* smokeUp.rotation.x = 0.5*Math.PI */
+                  temperatureUp.position.set(0, 107, 0);
+                  temperature.add(temperatureUp);
+
+                  var temperatureCoverGeometry = new THREE.SphereGeometry(
+                    20,
+                    20,
+                    6,
+                    0,
+                    Math.PI * 2,
+                    0,
+                    Math.PI / 2
+                  );
+                  var temperatureCover = utils.makeMesh(
+                    "phong",
+                    temperatureCoverGeometry,
+                    0xe8e8e8
+                  );
+                  temperatureCover.position.set(0, 110, 0);
+                  temperature.add(temperatureCover);
+                  temperature.position.set(x, y, z);
+
+                  return temperature;
+                }
+
+                // 控制器
+                function controller(controllerPositionArr, flag) {
+                  var controllerPosition = controllerPositionArr;
+                  for (var i = 0; i < controllerPosition.length; i++) {
+                    var controller = createController(
+                      controllerPosition[i][0],
+                      controllerPosition[i][1],
+                      controllerPosition[i][2]
+                    );
+                    alarm(controller.children[0], flag[i]);
+                    scene.add(controller);
+                  }
+                }
+
+                // 控制器模型
+                function createController(x, y, z) {
+                  var controller = new THREE.Object3D();
+
+                  var controllerBaseGeometry = new THREE.BoxGeometry(
+                    40,
+                    30,
+                    40
+                  );
+                  var controllerBase = utils.makeMesh(
+                    "phong",
+                    controllerBaseGeometry,
+                    0xe8e8e8
+                  );
+                  controllerBase.position.set(0, 103, 0);
+                  controller.add(controllerBase);
+
+                  var controllerLeftBarGeometry = new THREE.BoxGeometry(
+                    9,
+                    26,
+                    43
+                  );
+                  var controllerLeftBar = utils.makeMesh(
+                    "glass",
+                    controllerLeftBarGeometry,
+                    0x848484,
+                    0.9
+                  );
+                  controllerLeftBar.position.set(-20, 96, 0);
+                  controller.add(controllerLeftBar);
+                  var controllerRightBar = controllerLeftBar.clone();
+                  controllerRightBar.position.set(20, 96, 0);
+                  controller.add(controllerRightBar);
+
+                  var lampGeometry = new THREE.CircleGeometry(
+                    1.4,
+                    36,
+                    0,
+                    Math.PI * 2
+                  );
+                  var lampGreen = utils.makeMesh(
+                    "glass",
+                    lampGeometry,
+                    0x00ee00,
+                    0.9
+                  );
+                  lampGreen.position.set(-10, 107, 21);
+                  controller.add(lampGreen);
+                  var lampYellow = utils.makeMesh(
+                    "glass",
+                    lampGeometry,
+                    0xeeee00,
+                    0.9
+                  );
+                  lampYellow.position.set(-5, 107, 21);
+                  controller.add(lampYellow);
+                  var lampRed = utils.makeMesh(
+                    "glass",
+                    lampGeometry,
+                    0xee0000,
+                    0.9
+                  );
+                  lampRed.position.set(0, 107, 21);
+                  controller.add(lampRed);
+
+                  var controllerButtonGeometry = new THREE.BoxGeometry(
+                    10,
+                    6,
+                    0.5
+                  );
+                  var controllerButton = utils.makeMesh(
+                    "phong",
+                    controllerButtonGeometry,
+                    0x4a708b
+                  );
+                  controllerButton.castShadow = false;
+                  controllerButton.position.set(-3, 98, 21);
+                  controller.add(controllerButton);
+
+                  var controllerButtonClone = controllerButton.clone();
+                  controllerButtonClone.position.set(9, 98, 21);
+                  controller.add(controllerButtonClone);
+
+                  controller.position.set(x, y, z);
+                  return controller;
+                }
+
+                // 报警
+                function alarm(geo, flag) {
+                  if (flag == "interrupt") {
+                    var colorindex = 0;
+                    var colorarray = new Array(0xe8e8e8, 0xeeee00);
+                    interruptTime = setInterval(function() {
+                      colorindex++;
+                      if (colorindex == 3) {
+                        colorindex = 0;
+                      }
+                      geo.material.color.set(colorarray[colorindex]);
+                    }, 500);
+                  } else if (flag == "fault") {
+                    var colorindex = 0;
+                    var colorarray = new Array(0xe8e8e8, 0xff8247);
+                    faultTime = setInterval(function() {
+                      colorindex++;
+                      if (colorindex == 3) {
+                        colorindex = 0;
+                      }
+                      geo.material.color.set(colorarray[colorindex]);
+                    }, 500);
+                  } else if (flag == "fire") {
+                    var colorindex = 0;
+                    var colorarray = new Array(0xe8e8e8, 0xee0000);
+                    fireTime = setInterval(function() {
+                      colorindex++;
+                      if (colorindex == 3) {
+                        colorindex = 0;
+                      }
+                      geo.material.color.set(colorarray[colorindex]);
+                    }, 500);
+                  }
+                }
+
+                // 机柜
+                function machine(machinePositionArr) {
+                  var machine = new THREE.Object3D();
+                  var machinePosition = machinePositionArr;
+
+                  var textureFront = new THREE.TextureLoader().load(
+                    "../../../static/3D/img/rack_front_door.jpg"
+                  );
+                  var materialFront = new THREE.MeshPhongMaterial({
+                    map: textureFront
+                  });
+                  var machineFrontGeometry = new THREE.BoxGeometry(2, 300, 150);
+                  var machineFront = new THREE.Mesh(
+                    machineFrontGeometry,
+                    materialFront
+                  );
+                  machineFront.rotation.y = -0.5 * Math.PI;
+                  machineFront.position.set(0, 152, 0);
+                  machine.add(machineFront);
+
+                  var textureBack = new THREE.TextureLoader().load(
+                    "../../../static/3D/img/rack_door_back.jpg"
+                  );
+                  var materialBack = new THREE.MeshPhongMaterial({
+                    map: textureBack
+                  });
+                  var machineBackGeometry = new THREE.BoxGeometry(2, 300, 150);
+                  var machineBack = new THREE.Mesh(
+                    machineBackGeometry,
+                    materialBack
+                  );
+                  machineBack.rotation.y = -0.5 * Math.PI;
+                  machineBack.position.set(0, 152, -140);
+                  machine.add(machineBack);
+
+                  var textureLeft = new THREE.TextureLoader().load(
+                    "../../../static/3D/img/rack_panel.jpg"
+                  );
+                  var materialLeft = new THREE.MeshPhongMaterial({
+                    map: textureLeft,
+                    color: 0x383838
+                  });
+                  var machineLeftGeometry = new THREE.BoxGeometry(2, 300, 140);
+                  var machineLeft = new THREE.Mesh(
+                    machineLeftGeometry,
+                    materialLeft
+                  );
+                  machineLeft.position.set(-75, 152, -70);
+                  machine.add(machineLeft);
+
+                  var machineRight = machineLeft.clone();
+                  machineRight.position.set(75, 152, -70);
+                  machine.add(machineRight);
+
+                  var textureBottom = new THREE.TextureLoader().load(
+                    "../../../static/3D/img/rack_panel.jpg"
+                  );
+                  var materialBottom = new THREE.MeshPhongMaterial({
+                    map: textureBottom,
+                    color: 0x383838
+                  });
+                  var machineBottomGeometry = new THREE.BoxGeometry(
+                    150,
+                    2,
+                    140
+                  );
+                  var machineBottom = new THREE.Mesh(
+                    machineBottomGeometry,
+                    materialBottom
+                  );
+                  machineBottom.position.set(0, 2, -70);
+                  machine.add(machineBottom);
+
+                  var textureTop = new THREE.TextureLoader().load(
+                    "../../../static/3D/img/rack_panel.jpg"
+                  );
+                  var materialTop = new THREE.MeshPhongMaterial({
+                    map: textureTop,
+                    color: 0x383838
+                  });
+                  var machineTopGeometry = new THREE.BoxGeometry(140, 40, 150);
+                  var machineTop = new THREE.Mesh(
+                    machineTopGeometry,
+                    materialTop
+                  );
+                  machineTop.position.set(0, 290, -70);
+                  machine.add(machineTop);
+
+                  for (var i = 0; i < machinePosition.length; i++) {
+                    var machineClone = machine.clone();
+                    machineClone.position.set(
+                      machinePosition[i][0],
+                      machinePosition[i][1],
+                      machinePosition[i][2]
+                    );
+                    scene.add(machineClone);
+                  }
+                }
+              }
+
+              // 空调
+              function air(airPositionArr) {
+                var air = new THREE.Object3D();
+                var airPosition = airPositionArr;
+                var textureFront = new THREE.TextureLoader().load(
+                  "../../../static/3D/img/rack_inside.jpg"
+                );
+                var materialFront = new THREE.MeshBasicMaterial({
+                  map: textureFront,
+                  color: 0xffffff
+                });
+                var machineFrontGeometry = new THREE.BoxGeometry(2, 300, 150);
+                var machineFront1 = new THREE.Mesh(
+                  machineFrontGeometry,
+                  materialFront
+                );
+
+                var airHole1Geometry = new THREE.BoxGeometry(2, 60, 120);
+                var airHole1 = utils.makeMesh(
+                  "phong",
+                  airHole1Geometry,
+                  0x4a708b
+                );
+
+                airHole1.position.y = 87;
+
+                var airHole2Geometry = new THREE.BoxGeometry(2, 40, 35);
+                var airHole2 = utils.makeMesh(
+                  "phong",
+                  airHole2Geometry,
+                  0x4a708b
+                );
+                airHole2.position.y = -118;
+
+                var airHole3 = airHole2.clone();
+                airHole3.position.z = 45;
+
+                var airHole4 = airHole2.clone();
+                airHole4.position.z = -45;
+
+                var airHole1BSP = new ThreeBSP(airHole1);
+                var machineFront1BSP = new ThreeBSP(machineFront1);
+                var machineFront1ResultBSP = utils.bsp(
+                  "subtract",
+                  machineFront1BSP,
+                  airHole1BSP
+                );
+
+                var airHole2BSP = new ThreeBSP(airHole2);
+                var machineFront2ResultBSP = utils.bsp(
+                  "subtract",
+                  machineFront1ResultBSP,
+                  airHole2BSP
+                );
+
+                var airHole3BSP = new ThreeBSP(airHole3);
+                var machineFront3ResultBSP = utils.bsp(
+                  "subtract",
+                  machineFront2ResultBSP,
+                  airHole3BSP
+                );
+
+                var airHole4BSP = new ThreeBSP(airHole4);
+                var machineFront4ResultBSP = utils.bsp(
+                  "subtract",
+                  machineFront3ResultBSP,
+                  airHole4BSP
+                );
+                var machineFront = utils.bspMesh(
+                  "phong",
+                  0xebebeb,
+                  machineFront4ResultBSP
+                );
+
+                var textureGrid = new THREE.TextureLoader().load(
+                  "../../../static/3D/img/flag.jpg"
+                );
+                var materialGrid = new THREE.MeshBasicMaterial({
+                  map: textureGrid,
+                  color: 0xffffff
+                });
+                var textureGrid1 = new THREE.TextureLoader().load(
+                  "../../../static/3D/img/eee.png"
+                );
+                var materialGrid1 = new THREE.MeshBasicMaterial({
+                  map: textureGrid1,
+                  color: 0xffffff
+                });
+                var airGrid1Geometry = new THREE.BoxGeometry(120, 60, 2);
+                var airGrid1 = new THREE.Mesh(airGrid1Geometry, materialGrid);
+                airGrid1.position.z = 0;
+                airGrid1.position.y = 240;
+                air.add(airGrid1);
+
+                var airGrid2Geometry = new THREE.BoxGeometry(35, 40, 2);
+                var airGrid2 = new THREE.Mesh(airGrid2Geometry, materialGrid1);
+                airGrid2.position.z = 0;
+                airGrid2.position.y = 35;
+                air.add(airGrid2);
+
+                var airGrid3 = airGrid2.clone();
+                airGrid3.position.x = 45;
+                air.add(airGrid3);
+
+                var airGrid4 = airGrid2.clone();
+                airGrid4.position.x = -45;
+                air.add(airGrid4);
+
+                var textureLock = new THREE.TextureLoader().load(
+                  "../../../static/3D/img/lock.png"
+                );
+                var materialLock = new THREE.MeshBasicMaterial({
+                  map: textureLock,
+                  color: 0xffffff
+                });
+                var LockGeometry = new THREE.BoxGeometry(18, 24, 10);
+                var Lock = new THREE.Mesh(LockGeometry, materialLock);
+                Lock.position.y = 166;
+                Lock.position.x = 0;
+                air.add(Lock);
+
+                machineFront.rotation.y = -0.5 * Math.PI;
+                machineFront.position.set(0, 152, 0);
+                air.add(machineFront);
+
+                var textureBack = new THREE.TextureLoader().load(
+                  "../../../static/3D/img/rack_inside.jpg"
+                );
+                var materialBack = new THREE.MeshPhongMaterial({
+                  map: textureBack,
+                  color: 0xffffff
+                });
+                var machineBackGeometry = new THREE.BoxGeometry(2, 300, 150);
+                var machineBack = new THREE.Mesh(
+                  machineBackGeometry,
+                  materialBack
+                );
+                machineBack.rotation.y = -0.5 * Math.PI;
+                machineBack.position.set(0, 152, -140);
+                air.add(machineBack);
+
+                var textureLeft = new THREE.TextureLoader().load(
+                  "../../../static/3D/img/rack_inside.jpg"
+                );
+                var materialLeft = new THREE.MeshPhongMaterial({
+                  map: textureLeft,
+                  color: 0xffffff
+                });
+                var machineLeftGeometry = new THREE.BoxGeometry(2, 300, 140);
+                var machineLeft = new THREE.Mesh(
+                  machineLeftGeometry,
+                  materialLeft
+                );
+                machineLeft.position.set(-75, 152, -70);
+                air.add(machineLeft);
+
+                var machineRight = machineLeft.clone();
+                machineRight.position.set(75, 152, -70);
+                air.add(machineRight);
+
+                var textureBottom = new THREE.TextureLoader().load(
+                  "../../../static/3D/img/rack_inside.jpg"
+                );
+                var materialBottom = new THREE.MeshPhongMaterial({
+                  map: textureBottom,
+                  color: 0xffffff
+                });
+                var machineBottomGeometry = new THREE.BoxGeometry(150, 2, 140);
+                var machineBottom = new THREE.Mesh(
+                  machineBottomGeometry,
+                  materialBottom
+                );
+                machineBottom.position.set(0, 2, -70);
+                air.add(machineBottom);
+
+                var textureTop = new THREE.TextureLoader().load(
+                  "../../../static/3D/img/rack_inside.jpg"
+                );
+                var materialTop = new THREE.MeshPhongMaterial({
+                  map: textureTop,
+                  color: 0x63b8ff
+                });
+                var machineTopGeometry = new THREE.BoxGeometry(140, 40, 150);
+                var machineTop = new THREE.Mesh(
+                  machineTopGeometry,
+                  materialTop
+                );
+                machineTop.position.set(0, 290, -70);
+                air.add(machineTop);
+
+                for (var i = 0; i < airPosition.length; i++) {
+                  var airClone = air.clone();
+                  airClone.position.set(
+                    airPosition[i][0],
+                    airPosition[i][1],
+                    airPosition[i][2]
+                  );
+                  scene.add(airClone);
+                }
+              }
+
+              // 光
+              function buildLightSystem() {
+                if (!config.isMobile) {
+                  // 平行的一束光，模拟从很远处照射的太阳光
+                  // DirectionalLight( color, intensity )
+                  // color — 光的颜色值，十六进制，默认值为0xffffff.
+                  // intensity — 光的强度，默认值为1.
+                  var directionalLight = new THREE.DirectionalLight(
+                    0xffffff,
+                    1
+                  );
+                  directionalLight.position.set(500, 1000, 500);
+                  directionalLight.target.position.set(0, 0, 0);
+                  directionalLight.castShadow = false;
+
+                  var d = 300;
+                  // 正交投影相机
+                  // var camera = new THREE.OrthographicCamera(left, right, top, bottom, near, far);
+                  directionalLight.shadow.camera = new THREE.OrthographicCamera(
+                    -d,
+                    d,
+                    d,
+                    -d,
+                    500,
+                    1600
+                  );
+                  directionalLight.shadow.bias = 0.0001;
+                  directionalLight.shadow.mapSize.width = directionalLight.shadow.mapSize.height = 1024;
+                  scene.add(directionalLight);
+                  // 环境光( AmbientLight )：笼罩在整个空间无处不在的光
+                  var light = new THREE.AmbientLight(0xffffff, 0.3);
+                  scene.add(light);
+                } else {
+                  // 半球光光源( HemisphereLight )
+                  var hemisphereLight = new THREE.HemisphereLight(0xebebeb, 1);
+                  scene.add(hemisphereLight);
+                  var light = new THREE.AmbientLight(0xffffff, 0.15);
+                  scene.add(light);
+                }
+              }
+
+              function buildAuxSystem() {
+                // stats = new Stats()
+                // stats.setMode(0)
+                // stats.domElement.style.position = 'absolute'
+                // stats.domElement.style.left = '5px'
+                // stats.domElement.style.top = '5px'
+                // document.body.appendChild(stats.domElement)
+
+                // var axisHelper = new THREE.AxesHelper(200)
+                // scene.add(axisHelper)
+
+                // 创建网格辅助线
+                /* var gridHelper = new THREE.GridHelper(320, 32)
+                  scene.add(gridHelper) */
+
+                var controls = new THREE.OrbitControls(
+                  camera,
+                  renderer.domElement
+                );
+                //使动画循环使用时阻尼或自转 意思是否有惯性
+                controls.enableDamping = true;
+                //动态阻尼系数 就是鼠标拖拽旋转灵敏度
+                controls.dampingFactor = 0.25;
+                //旋转速度
+                controls.rotateSpeed = 0.35;
+              }
+
+              function loop() {
+                // stats.update()
+                renderer.render(scene, camera); // 渲染器开始渲染, scene 和 camera 是必须参数, 因为场景里有动画, 所以放在 loop 里循环
+                stop = requestAnimationFrame(loop);
+              }
+
+              function onWindowResize(inxx) {
+                window.addEventListener("resize", function() {
+                  width = $(".roomZone .content-box")
+                    .eq(inxx - 1)
+                    .width();
+                  height = $(".roomZone .content-box")
+                    .eq(inxx - 1)
+                    .height();
+                  // camera.aspect = width / height
+                  // camera.updateProjectionMatrix()
+                  renderer.setSize(width, height);
+                });
+              }
+            });
+          }
+        }
+      );
+
+      roomTime = setTimeout(function() {
+        room(partCode, inxx);
+      }, 10000);
+    }
+
+    function clearThree(obj){
+        while(obj.children.length > 0){ 
+          clearThree(obj.children[0])
+          obj.remove(obj.children[0])
+        }
+        if(obj.mesh) obj.mesh.dispose()
+        if(obj.geometry) obj.geometry.dispose()
+        if(obj.material) obj.material.dispose()
+        if(obj.texture) obj.texture.dispose()
+
+    }
+</script>
