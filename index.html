@@ -12,6 +12,7 @@
     <div id="view"></div>
     <script type="text/javascript" src="js/jquery.min.js"></script>
     <script type="text/javascript" src="js/three.min.js"></script>
+    <script type="text/javascript" src="js/ThreeBSP.js"></script>
     <script type="text/javascript" src="js/Detector.js"></script>
     <script type="text/javascript" src="js/OrbitControls.js"></script>
     <script type="text/javascript" src="js/stats.min.js"></script>
@@ -46,9 +47,6 @@
                         temperaturePositionArr: [],  // 温感位置
                         controllerPositionArr: [],  // 控制器位置
                         fontPositionArr: []  // 名称位置
-                    },
-                    attach = {
-
                     }
                 $.post('./json/axis.json',function(result,state){
                     surge = JSON.parse(result)
@@ -76,15 +74,14 @@
                                 props.controllerPositionArr.push(val.EQ_COORDINATE.split(","))
                             }
                         })
-                        workshop(props,attach)
+                        workshop(props)
                     } else {
                         console.log('axisJson 数据异常')
                     }
                 })
             }
 
-            let workshop = (props,attach) => {
-                debugger
+            let workshop = (props) => {
                 let three = {
                         scene: null,
                         camera: null,
@@ -96,12 +93,25 @@
                         states: null,
                         background: 0x1e1e24
                     },
+                    alarm ={
+                        colorArray: [],
+                        smoke: null,
+                        temperature: null,
+                        controller: null
+                    },
                     geometry = null,
                     material = null,
                     texture = null,
-                    model = null,
                     loader = null,
-                    modelClone = null
+                    model = null,
+                    modelClone = null,
+                    object = null,
+                    objectClone = null,
+                    geo = null,
+                    mat = null,
+                    mod = null,
+                    bsp = null
+
                 three.width = document.getElementById('view').offsetWidth
                 three.height = document.getElementById('view').offsetHeight
 
@@ -111,7 +121,7 @@
                 // 建造场景
                 let initScene = () => {
                     three.scene = new THREE.Scene()
-                    three.scene.position.z = 120;
+                    three.scene.position.z = 120
                 }
 
                 // 透视投影相机
@@ -152,6 +162,7 @@
                 }
 
                 let initModel = () => {
+                    // 文字模型
                     let fontModel = (fontPositionArr,describArr) => {
                         loader = new THREE.FontLoader()
                         loader.load("font/MicrosoftYaHei_Regular.json",function(res) {
@@ -175,7 +186,7 @@
                             }
                         })
                     }
-
+                    // 底座
                     let base = () => {
                         // 创建底座 长/宽/高
                         geometry = new THREE.BoxBufferGeometry(1000, 10, 600)
@@ -188,21 +199,474 @@
                         model = new THREE.Mesh(geometry, material)
                         model.rotation.z = -Math.PI
                         model.position.y = -1
+                        model.name = 'base'
                         three.scene.add(model)
+                    }
+                    // 机柜
+                    let machine = (machinePositionArr) => {
+                        // 机柜
+                        object = new THREE.Object3D()
+
+                        // 机柜正面
+                        texture = new THREE.TextureLoader().load(
+                            "img/rack_front_door.jpg"
+                        )
+                        material = new THREE.MeshPhongMaterial({
+                            map: texture
+                        })
+                        geometry = new THREE.BoxGeometry(2, 300, 150)
+                        model = new THREE.Mesh(geometry,material)
+                        model.rotation.y = -0.5 * Math.PI
+                        model.position.set(0, 152, 0)
+                        object.add(model)
+
+                        // 机柜背面
+                        texture = new THREE.TextureLoader().load(
+                            "img/rack_door_back.jpg"
+                        )
+                        material = new THREE.MeshPhongMaterial({
+                            map: texture
+                        })
+                        geometry = new THREE.BoxGeometry(2, 300, 150)
+                        model = new THREE.Mesh(geometry,material)
+                        model.rotation.y = -0.5 * Math.PI
+                        model.position.set(0, 152, -140)
+                        object.add(model)
+
+                        // 机柜左侧
+                        texture = new THREE.TextureLoader().load(
+                            "img/rack_panel.jpg"
+                        )
+                        material = new THREE.MeshPhongMaterial({
+                            map: texture,
+                            color: 0x383838
+                        })
+                        geometry = new THREE.BoxGeometry(2, 300, 140)
+                        model = new THREE.Mesh(geometry, material)
+                        model.position.set(-75, 152, -70)
+                        object.add(model)
+
+                        // 机柜右侧
+                        modelClone = model.clone()
+                        modelClone.position.set(75, 152, -70)
+                        object.add(modelClone)
+
+                        // 机柜底部
+                        texture = new THREE.TextureLoader().load(
+                            "img/rack_panel.jpg"
+                        )
+                        material = new THREE.MeshPhongMaterial({
+                            map: texture,
+                            color: 0x383838
+                        })
+                        geometry = new THREE.BoxGeometry(150,2,140)
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(0, 2, -70)
+                        object.add(model)
+
+                        // 机柜顶部
+                        texture = new THREE.TextureLoader().load(
+                            "img/rack_panel.jpg"
+                        )
+                        material = new THREE.MeshPhongMaterial({
+                            map: texture,
+                            color: 0x383838
+                        })
+                        geometry = new THREE.BoxGeometry(140, 40, 150)
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(0, 290, -70)
+                        object.add(model)
+                        object.name = 'machine'
+
+                        // 机柜克隆
+                        for (var i = 0,l = machinePositionArr.length; i < l; i++) {
+                            objectClone = object.clone()
+                            objectClone.position.set(machinePositionArr[i][0],machinePositionArr[i][1],machinePositionArr[i][2])
+                            three.scene.add(objectClone)
+                        }
+                    }
+                    // 空调
+                    let air = (airPositionArr) => {
+                        // 空调
+                        object = new THREE.Object3D()
+                        // 空调正面
+                        texture = new THREE.TextureLoader().load(
+                            "img/rack_inside.jpg"
+                        )
+                        material = new THREE.MeshBasicMaterial({
+                            map: texture,
+                            color: 0xffffff
+                        })
+                        geometry = new THREE.BoxGeometry(2, 300, 150)
+                        model = new THREE.Mesh(geometry,material)
+
+                        // 空调正面打孔
+                        geo = new THREE.BoxGeometry(2, 60, 120)
+                        mat = new THREE.MeshPhongMaterial({
+                            color: 0x4a708b
+                        })
+                        mod = new THREE.Mesh(geo,mat)
+                        mod.position.y = 87
+                        bsp = new ThreeBSP(model).subtract(new ThreeBSP(mod))
+
+                        geo = new THREE.BoxGeometry(2, 40, 35)
+                        mat = new THREE.MeshPhongMaterial({
+                            color: 0x4a708b
+                        })
+                        mod = new THREE.Mesh(geo,mat)
+                        mod.position.y = -118
+                        bsp = bsp.subtract(new ThreeBSP(mod))
+
+                        mod = mod.clone()
+                        mod.position.z = 45
+                        bsp = bsp.subtract(new ThreeBSP(mod))
+
+                        mod = mod.clone()
+                        mod.position.z = -45
+                        bsp = bsp.subtract(new ThreeBSP(mod))
+                        model = bsp.toMesh()
+                        // 更新模型的面和顶点的数据
+                        model.geometry.computeFaceNormals()
+                        model.geometry.computeVertexNormals()
+                        model.material = new THREE.MeshPhongMaterial({
+                            color: 0xebebeb
+                        })
+                        model.rotation.y = -0.5 * Math.PI
+                        model.position.set(0, 152, 0)
+                        object.add(model)
+
+                        // 缺口处补充网格
+                        texture = new THREE.TextureLoader().load(
+                            "img/flag.jpg"
+                        )
+                        material = new THREE.MeshBasicMaterial({
+                            map: texture,
+                            color: 0xffffff
+                        })
+                        geometry = new THREE.BoxGeometry(120, 60, 2)
+                        model = new THREE.Mesh(geometry, material)
+                        model.position.z = 0
+                        model.position.y = 240
+                        object.add(model)
+
+                        texture = new THREE.TextureLoader().load(
+                            "img/eee.png"
+                        )
+                        material = new THREE.MeshBasicMaterial({
+                            map: texture,
+                            color: 0xffffff
+                        })
+                        geometry = new THREE.BoxGeometry(35, 40, 2)
+                        model = new THREE.Mesh(geometry, material)
+                        model.position.z = 0
+                        model.position.y = 35
+                        object.add(model)
+
+                        model = model.clone()
+                        model.position.x = 45
+                        object.add(model)
+
+                        model = model.clone()
+                        model.position.x = -45
+                        object.add(model)
+
+                        // 密码锁
+                        texture = new THREE.TextureLoader().load(
+                            "img/lock.png"
+                        )
+                        material = new THREE.MeshBasicMaterial({
+                            map: texture,
+                            color: 0xffffff
+                        })
+                        geometry = new THREE.BoxGeometry(18, 24, 10)
+                        model= new THREE.Mesh(geometry, material)
+                        model.position.y = 166
+                        model.position.x = 0
+                        object.add(model)
+
+                        // 空调背面
+                        texture = new THREE.TextureLoader().load(
+                            "img/rack_inside.jpg"
+                        )
+                        material = new THREE.MeshPhongMaterial({
+                            map: texture,
+                            color: 0xffffff
+                        })
+                        geometry = new THREE.BoxGeometry(2, 300, 150)
+                        model = new THREE.Mesh(geometry,material)
+                        model.rotation.y = -0.5 * Math.PI
+                        model.position.set(0, 152, -140)
+                        object.add(model)
+
+                        // 空调左侧面
+                        texture = new THREE.TextureLoader().load(
+                            "img/rack_inside.jpg"
+                        )
+                        var material = new THREE.MeshPhongMaterial({
+                            map: texture,
+                            color: 0xffffff
+                        })
+                        geometry = new THREE.BoxGeometry(2, 300, 140)
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(-75, 152, -70)
+                        object.add(model)
+
+                        // 空调右侧面
+                        model = model.clone()
+                        model.position.set(75, 152, -70)
+                        object.add(model)
+
+                        // 空调底部
+                        texture = new THREE.TextureLoader().load(
+                            "img/rack_inside.jpg"
+                        )
+                        material = new THREE.MeshPhongMaterial({
+                            map: texture,
+                            color: 0xffffff
+                        })
+                        geometry = new THREE.BoxGeometry(150, 2, 140)
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(0, 2, -70)
+                        object.add(model)
+
+                        // 空调顶部
+                        texture = new THREE.TextureLoader().load(
+                            "img/rack_inside.jpg"
+                        )
+                        material = new THREE.MeshPhongMaterial({
+                            map: texture,
+                            color: 0x63b8ff
+                        })
+                        geometry = new THREE.BoxGeometry(140, 40, 150)
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(0, 290, -70)
+                        object.add(model)
+                        object.name = 'air'
+
+                        // 空调克隆
+                        for (var i = 0,l = airPositionArr.length; i < l; i++) {
+                            objectClone = object.clone()
+                            objectClone.position.set(airPositionArr[i][0],airPositionArr[i][1],airPositionArr[i][2])
+                            three.scene.add(objectClone)
+                        }
+                    }
+                    // 烟感
+                    let smoke = (smokePositionArr) => {
+                        // 烟感
+                        object = new THREE.Object3D()
+
+                        // 底座
+                        geometry = new THREE.CylinderGeometry(20,20,10,40,5)
+                        material = new THREE.MeshPhongMaterial({
+                            color: 0xe8e8e8
+                        })
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(0, 96, 0)
+                        object.add(model)
+
+                        // 玻璃体
+                        geometry = new THREE.CylinderGeometry(16,16,4,40,5)
+                        material = new THREE.MeshBasicMaterial({
+                            color: 0x008b00,
+                            opacity: 0.4,
+                            transparent: true
+                        })
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(0, 102, 0)
+                        object.add(model)
+
+                        // 顶部
+                        geometry = new THREE.CylinderGeometry(8,10,5,40,5)
+                        material = new THREE.MeshPhongMaterial({
+                            color: 0xe8e8e8
+                        })
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(0, 106, 0)
+                        object.add(model)
+                        object.name = 'smoke'
+
+                        // 烟感克隆
+                        for (var i = 0,l = smokePositionArr.length; i < l; i++) {
+                            objectClone = object.clone()
+                            objectClone.position.set(smokePositionArr[i][0],smokePositionArr[i][1],smokePositionArr[i][2])
+                            three.scene.add(objectClone)
+                        }
+                    }
+                    // 温感
+                    let temperature = (temperaturePositionArr) => {
+                        // 温感
+                        object = new THREE.Object3D()
+
+                        // 温感底座
+                        geometry = new THREE.CylinderGeometry(20,20,10,40,40)
+                        material = new THREE.MeshPhongMaterial({
+                            color: 0xe8e8e8
+                        })
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(0, 96, 0)
+                        object.add(model)
+
+                        // 玻璃体
+                        geometry = new THREE.CylinderGeometry(20,20,8,40,5)
+                        material = new THREE.MeshPhongMaterial({
+                            color: 0x000080,
+                            opacity: 0.8,
+                            transparent: true
+                        })
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(0, 107, 0)
+                        object.add(model)
+
+                        // 温感顶部
+                        geometry = new THREE.SphereGeometry(20,20,6,0,Math.PI * 2,0,Math.PI / 2)
+                        material = new THREE.MeshPhongMaterial({
+                            color: 0xe8e8e8,
+                        })
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(0, 110, 0)
+                        object.add(model)
+                        object.name = 'temperature'
+
+                        // 温感克隆
+                        for (var i = 0, l = temperaturePositionArr.length; i < l; i++) {
+                            objectClone = object.clone()
+                            objectClone.position.set(temperaturePositionArr[i][0],temperaturePositionArr[i][1],temperaturePositionArr[i][2])
+                            three.scene.add(objectClone)
+                        }
+                    }
+
+                    // 控制器
+                    let controller = (controllerPositionArr) => {
+                        // 控制器
+                        object = new THREE.Object3D()
+
+                        // 控制器主体
+                        geometry = new THREE.BoxGeometry(40,30,40)
+                        material = new THREE.MeshPhongMaterial({
+                            color: 0xe8e8e8,
+                        })
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(0, 103, 0)
+                        object.add(model)
+
+                        // 控制器左侧
+                        geometry = new THREE.BoxGeometry(9,26,43)
+                        material = new THREE.MeshPhongMaterial({
+                            color: 0x848484,
+                            opacity: 0.9,
+                            transparent: true
+                        })
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(-20, 96, 0)
+                        object.add(model)
+
+                        // 控制器右侧
+                        model = model.clone()
+                        model.position.set(20, 96, 0)
+                        object.add(model)
+
+                        // 控制器指示灯
+                        geometry = new THREE.CircleGeometry(1.4,36,0,Math.PI * 2)
+                        material = new THREE.MeshPhongMaterial({
+                            color: 0x00ee00,
+                            opacity: 0.9,
+                            transparent: true
+                        })
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(-10, 107, 21)
+                        object.add(model)
+
+                        material = new THREE.MeshPhongMaterial({
+                            color: 0xeeee00,
+                            opacity: 0.9,
+                            transparent: true
+                        })
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(-5, 107, 21)
+                        object.add(model)
+
+                        material = new THREE.MeshPhongMaterial({
+                            color: 0xee0000,
+                            opacity: 0.9,
+                            transparent: true
+                        })
+                        model = new THREE.Mesh(geometry,material)
+                        model.position.set(0, 107, 21)
+                        object.add(model)
+
+                        // 控制器按钮
+                        geometry = new THREE.BoxGeometry(10,6,0.5)
+                        material = new THREE.MeshPhongMaterial({
+                            color: 0x4a708b
+                        })
+                        model = new THREE.Mesh(geometry,material)
+                        model.castShadow = false
+                        model.position.set(-3, 98, 21)
+                        object.add(model)
+
+                        modelClone = model.clone()
+                        modelClone.position.set(9, 98, 21)
+                        object.add(modelClone)
+                        object.name = 'controller'
+
+                        // 控制器克隆
+                        for (var i = 0,l = controllerPositionArr.length; i < l; i++) {
+                            objectClone = object.clone()
+                            objectClone.position.set(controllerPositionArr[i][0],controllerPositionArr[i][1],controllerPositionArr[i][2])
+                            three.scene.add(objectClone)
+                        }
                     }
 
                     // 文字模型
                     fontModel(props.fontPositionArr, props.describArr)
                     // 底座
                     base()
-
-
+                    // 机柜
+                    machine(props.machinePositionArr)
+                    // 空调
+                    air(props.airPositionArr)
+                    // 烟感
+                    smoke(props.smokePositionArr)
+                    // 温感
+                    temperature(props.temperaturePositionArr)
+                    // 控制器
+                    controller(props.controllerPositionArr)
                 }
 
+                let animate = (alarm) => {
+                    
+                    for(var p = 0,q = Object.keys(alarm).length;p < q;p++){
+                        if (alarm.flag == "interrupt") {
+                            alarm.colorArray = [0xe8e8e8, 0xeeee00]
+                            timer1 = setInterval(() => {
+                                for (var i = 0;i < 2;i++) {
+                                    alarm.model.material.color.set(colorarray[i])
+                                    (i = 1) && i == 0
+                                }
+                            }, 500)
+                        } else if (alarm.flag == "fault") {
+                            alarm.colorArray = [0xe8e8e8, 0xff8247]
+                            timer1 = setInterval(() => {
+                                for (var i = 0;i < 2;i++) {
+                                    alarm.model.material.color.set(colorarray[i])
+                                    (i = 1) && i == 0
+                                }
+                            }, 500)
+                        } else if (alarm.flag == "fire") {
+                            alarm.colorArray = [0xe8e8e8, 0xee0000]
+                            timer1 = setInterval(() => {
+                                for (var i = 0;i < 2;i++) {
+                                    model.material.color.set(colorarray[i])
+                                    (i = 1) && i == 0
+                                }
+                            }, 500)
+                        }
+                    }
+                }
                 //初始化性能插件
                 let initStats = () => {
-                    three.stats = new Stats();
-                    document.body.appendChild(three.stats.dom);
+                    three.stats = new Stats()
+                    document.body.appendChild(three.stats.dom)
                 }
 
                 // 鼠标控制
@@ -233,7 +697,7 @@
 
                 let loop = () => {
                     //更新性能插件
-                    three.stats.update();
+                    three.stats.update()
 
                     three.renderer.render(three.scene, three.camera) // 渲染器开始渲染, scene 和 camera 是必须参数, 因为场景里有动画, 所以放在 loop 里循环
                     requestAnimationFrame(loop)
@@ -253,15 +717,18 @@
                     initRender()
                     initLight()
                     initModel()
+                    // animate()
                     initControls()
                     initStats()
                     loop()
+                    debugger
                     onWindowResize()
                 }
 
                 draw()
+
             }
-        }());
+        }())
     </script>
 </body>
 </html>
