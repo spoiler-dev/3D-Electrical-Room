@@ -37,7 +37,7 @@
             "eqName": "0330100202",
             "EQ_COORDINATE": "-240,220,-210",
             "Quality": "OPC_QUALITY_GOOD",
-            "State": "0",
+            "State": "1",
             "Num": "2",
             "eqType": "02"
         }, {
@@ -51,7 +51,7 @@
             "eqName": "0330200403",
             "EQ_COORDINATE": "-20,220,-210",
             "Quality": "OPC_QUALITY_GOOD",
-            "State": "0",
+            "State": "",
             "Num": "4",
             "eqType": "03"
         }, {
@@ -65,7 +65,7 @@
             "eqName": "0330200625",
             "EQ_COORDINATE": "-20,220,-141",
             "Quality": "OPC_QUALITY_GOOD",
-            "State": "0",
+            "State": "1",
             "Num": "6",
             "eqType": "25"
         }, {

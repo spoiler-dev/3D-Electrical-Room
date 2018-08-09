@@ -38,9 +38,6 @@
                 let surge,  // Json 数据
                     props = {
                         describArr: [],  // 机箱名称
-                        arr1: [],  // 烟感
-                        arr2: [],  // 温感
-                        arr3: [],  // 控制器
                         machinePositionArr: [],  // 机箱位置
                         airPositionArr: [],  // 空调位置
                         smokePositionArr: [],   // 烟感位置
@@ -50,7 +47,7 @@
                     }
                 $.post('./json/axis.json',function(result,state){
                     surge = JSON.parse(result)
-                    if (result) {
+                    if (state == 'success') {
                         // 机柜空调坐标、名称以及名称坐标
                         $.each(surge.List[0].describ, function(index, val) {
                             if (val.CABINET_TYPE == "0") {
@@ -93,12 +90,6 @@
                         states: null,
                         background: 0x1e1e24
                     },
-                    alarm ={
-                        colorArray: [],
-                        smoke: null,
-                        temperature: null,
-                        controller: null
-                    },
                     geometry = null,
                     material = null,
                     texture = null,
@@ -110,7 +101,9 @@
                     geo = null,
                     mat = null,
                     mod = null,
-                    bsp = null
+                    bsp = null,
+                    equip = null
+
 
                 three.width = document.getElementById('view').offsetWidth
                 three.height = document.getElementById('view').offsetHeight
@@ -146,14 +139,14 @@
                     // 平行的一束光，模拟从很远处照射的太阳光
                     // DirectionalLight( color, intensity )
 
-                    three.light = new THREE.DirectionalLight(0xffffff,1)  // color — 光的颜色值，十六进制，默认值为0xffffff,intensity — 光的强度，默认值为1
+                    three.light = new THREE.DirectionalLight(0xffffff, 1)  // color — 光的颜色值，十六进制，默认值为0xffffff,intensity — 光的强度，默认值为1
                     three.light.position.set(500, 1000, 500)
                     three.light.target.position.set(0, 0, 0)
                     three.light.castShadow = false
                     const d = 300
                     // 正交投影相机
                     // var camera = new THREE.OrthographicCamera(left, right, top, bottom, near, far)
-                    three.light.shadow.camera = new THREE.OrthographicCamera(-d,d,d,-d,500,1600 )
+                    three.light.shadow.camera = new THREE.OrthographicCamera(-d, d, d, -d, 500, 1600 )
                     three.light.shadow.bias = 0.0001
                     three.light.shadow.mapSize.width = three.light.shadow.mapSize.height = 1024
                     three.scene.add(three.light)
@@ -177,11 +170,7 @@
                                 model = new THREE.Mesh(geometry, material)
                                 //设置位置
                                 modelClone = model.clone()
-                                modelClone.position.set(
-                                    fontPositionArr[i][0],
-                                    fontPositionArr[i][1],
-                                    fontPositionArr[i][2]
-                                )
+                                modelClone.position.set(fontPositionArr[i][0], fontPositionArr[i][1], fontPositionArr[i][2])
                                 three.scene.add(modelClone)
                             }
                         })
@@ -195,8 +184,8 @@
                         texture.wrapS = THREE.RepeatWrapping
                         texture.wrapT = THREE.RepeatWrapping
                         texture.repeat.set(8, 8)
-                        material = new THREE.MeshLambertMaterial({ map: texture,color: 0xc6e2ff})
-                        model = new THREE.Mesh(geometry, material)
+                        material = new THREE.MeshLambertMaterial({ map: texture, color: 0xc6e2ff})
+                        model = new THREE.Mesh(geometry,material)
                         model.rotation.z = -Math.PI
                         model.position.y = -1
                         model.name = 'base'
@@ -215,7 +204,7 @@
                             map: texture
                         })
                         geometry = new THREE.BoxGeometry(2, 300, 150)
-                        model = new THREE.Mesh(geometry,material)
+                        model = new THREE.Mesh(geometry, material)
                         model.rotation.y = -0.5 * Math.PI
                         model.position.set(0, 152, 0)
                         object.add(model)
@@ -279,7 +268,7 @@
                         object.name = 'machine'
 
                         // 机柜克隆
-                        for (var i = 0,l = machinePositionArr.length; i < l; i++) {
+                        for (let i = 0,l = machinePositionArr.length; i < l; i++) {
                             objectClone = object.clone()
                             objectClone.position.set(machinePositionArr[i][0],machinePositionArr[i][1],machinePositionArr[i][2])
                             three.scene.add(objectClone)
@@ -393,7 +382,7 @@
                             color: 0xffffff
                         })
                         geometry = new THREE.BoxGeometry(2, 300, 150)
-                        model = new THREE.Mesh(geometry,material)
+                        model = new THREE.Mesh(geometry, material)
                         model.rotation.y = -0.5 * Math.PI
                         model.position.set(0, 152, -140)
                         object.add(model)
@@ -402,12 +391,12 @@
                         texture = new THREE.TextureLoader().load(
                             "img/rack_inside.jpg"
                         )
-                        var material = new THREE.MeshPhongMaterial({
+                        material = new THREE.MeshPhongMaterial({
                             map: texture,
                             color: 0xffffff
                         })
                         geometry = new THREE.BoxGeometry(2, 300, 140)
-                        model = new THREE.Mesh(geometry,material)
+                        model = new THREE.Mesh(geometry, material)
                         model.position.set(-75, 152, -70)
                         object.add(model)
 
@@ -425,7 +414,7 @@
                             color: 0xffffff
                         })
                         geometry = new THREE.BoxGeometry(150, 2, 140)
-                        model = new THREE.Mesh(geometry,material)
+                        model = new THREE.Mesh(geometry, material)
                         model.position.set(0, 2, -70)
                         object.add(model)
 
@@ -438,34 +427,34 @@
                             color: 0x63b8ff
                         })
                         geometry = new THREE.BoxGeometry(140, 40, 150)
-                        model = new THREE.Mesh(geometry,material)
+                        model = new THREE.Mesh(geometry, material)
                         model.position.set(0, 290, -70)
                         object.add(model)
                         object.name = 'air'
 
                         // 空调克隆
-                        for (var i = 0,l = airPositionArr.length; i < l; i++) {
+                        for (let i = 0,l = airPositionArr.length; i < l; i++) {
                             objectClone = object.clone()
-                            objectClone.position.set(airPositionArr[i][0],airPositionArr[i][1],airPositionArr[i][2])
+                            objectClone.position.set(airPositionArr[i][0], airPositionArr[i][1], airPositionArr[i][2])
                             three.scene.add(objectClone)
                         }
                     }
                     // 烟感
-                    let smoke = (smokePositionArr) => {
+                    let smoke = (x,y,z,i) => {
                         // 烟感
                         object = new THREE.Object3D()
 
                         // 底座
-                        geometry = new THREE.CylinderGeometry(20,20,10,40,5)
+                        geometry = new THREE.CylinderGeometry(20, 20, 10, 40, 5)
                         material = new THREE.MeshPhongMaterial({
                             color: 0xe8e8e8
                         })
-                        model = new THREE.Mesh(geometry,material)
+                        model = new THREE.Mesh(geometry, material)
                         model.position.set(0, 96, 0)
                         object.add(model)
 
                         // 玻璃体
-                        geometry = new THREE.CylinderGeometry(16,16,4,40,5)
+                        geometry = new THREE.CylinderGeometry(16, 16, 4, 40, 5)
                         material = new THREE.MeshBasicMaterial({
                             color: 0x008b00,
                             opacity: 0.4,
@@ -476,24 +465,20 @@
                         object.add(model)
 
                         // 顶部
-                        geometry = new THREE.CylinderGeometry(8,10,5,40,5)
+                        geometry = new THREE.CylinderGeometry(8, 10, 5, 40, 5)
                         material = new THREE.MeshPhongMaterial({
                             color: 0xe8e8e8
                         })
                         model = new THREE.Mesh(geometry,material)
                         model.position.set(0, 106, 0)
                         object.add(model)
-                        object.name = 'smoke'
+                        object.name = `smoke-${i}`
+                        object.position.set(x, y, z)
 
-                        // 烟感克隆
-                        for (var i = 0,l = smokePositionArr.length; i < l; i++) {
-                            objectClone = object.clone()
-                            objectClone.position.set(smokePositionArr[i][0],smokePositionArr[i][1],smokePositionArr[i][2])
-                            three.scene.add(objectClone)
-                        }
+                        return object
                     }
                     // 温感
-                    let temperature = (temperaturePositionArr) => {
+                    let temperature = (x,y,z,i) => {
                         // 温感
                         object = new THREE.Object3D()
 
@@ -514,7 +499,7 @@
                             transparent: true
                         })
                         model = new THREE.Mesh(geometry,material)
-                        model.position.set(0, 107, 0)
+                        model.position.set(0, 105, 0)
                         object.add(model)
 
                         // 温感顶部
@@ -523,20 +508,16 @@
                             color: 0xe8e8e8,
                         })
                         model = new THREE.Mesh(geometry,material)
-                        model.position.set(0, 110, 0)
+                        model.position.set(0, 109, 0)
                         object.add(model)
-                        object.name = 'temperature'
+                        object.name = `temperature-${i}`
+                        object.position.set(x, y, z)
 
-                        // 温感克隆
-                        for (var i = 0, l = temperaturePositionArr.length; i < l; i++) {
-                            objectClone = object.clone()
-                            objectClone.position.set(temperaturePositionArr[i][0],temperaturePositionArr[i][1],temperaturePositionArr[i][2])
-                            three.scene.add(objectClone)
-                        }
+                        return object
                     }
 
                     // 控制器
-                    let controller = (controllerPositionArr) => {
+                    let controller = (x,y,z,i) => {
                         // 控制器
                         object = new THREE.Object3D()
 
@@ -607,16 +588,27 @@
                         modelClone = model.clone()
                         modelClone.position.set(9, 98, 21)
                         object.add(modelClone)
-                        object.name = 'controller'
+                        object.name = `controller-${i}`
+                        object.position.set(x, y, z)
 
-                        // 控制器克隆
-                        for (var i = 0,l = controllerPositionArr.length; i < l; i++) {
-                            objectClone = object.clone()
-                            objectClone.position.set(controllerPositionArr[i][0],controllerPositionArr[i][1],controllerPositionArr[i][2])
-                            three.scene.add(objectClone)
+                        return object
+                    }
+                    // 创造温感、烟感、控制器
+                    // 注：因为具有分别闪烁功能，因此不能使用 Clone 方法
+                    let inventor = (smokePositionArr,temperaturePositionArr,controllerPositionArr) => {
+                        for (let i = 0,l = smokePositionArr.length; i < l; i++) {
+                            equip = smoke(smokePositionArr[i][0],smokePositionArr[i][1],smokePositionArr[i][2],i)
+                            three.scene.add(equip)
+                        }
+                        for (let i = 0,l = temperaturePositionArr.length; i < l; i++) {
+                            equip = temperature(temperaturePositionArr[i][0],temperaturePositionArr[i][1],temperaturePositionArr[i][2],i)
+                            three.scene.add(equip)
+                        }
+                        for (let i = 0,l = controllerPositionArr.length; i < l; i++) {
+                            equip = controller(controllerPositionArr[i][0],controllerPositionArr[i][1],controllerPositionArr[i][2],i)
+                            three.scene.add(equip)
                         }
                     }
-
                     // 文字模型
                     fontModel(props.fontPositionArr, props.describArr)
                     // 底座
@@ -625,43 +617,136 @@
                     machine(props.machinePositionArr)
                     // 空调
                     air(props.airPositionArr)
-                    // 烟感
-                    smoke(props.smokePositionArr)
-                    // 温感
-                    temperature(props.temperaturePositionArr)
-                    // 控制器
-                    controller(props.controllerPositionArr)
+                    // 温感、烟感、控制器
+                    inventor(props.smokePositionArr,props.temperaturePositionArr,props.controllerPositionArr)
                 }
-
-                let animate = (alarm) => {
-                    
-                    for(var p = 0,q = Object.keys(alarm).length;p < q;p++){
-                        if (alarm.flag == "interrupt") {
-                            alarm.colorArray = [0xe8e8e8, 0xeeee00]
-                            timer1 = setInterval(() => {
-                                for (var i = 0;i < 2;i++) {
-                                    alarm.model.material.color.set(colorarray[i])
-                                    (i = 1) && i == 0
-                                }
-                            }, 500)
-                        } else if (alarm.flag == "fault") {
-                            alarm.colorArray = [0xe8e8e8, 0xff8247]
-                            timer1 = setInterval(() => {
-                                for (var i = 0;i < 2;i++) {
-                                    alarm.model.material.color.set(colorarray[i])
-                                    (i = 1) && i == 0
-                                }
-                            }, 500)
-                        } else if (alarm.flag == "fire") {
-                            alarm.colorArray = [0xe8e8e8, 0xee0000]
-                            timer1 = setInterval(() => {
-                                for (var i = 0;i < 2;i++) {
-                                    model.material.color.set(colorarray[i])
-                                    (i = 1) && i == 0
-                                }
-                            }, 500)
-                        }
+                // 动画
+                let animate = () => {
+                    let alarm = {
+                        arr1: [],  // 烟感状态
+                        arr2: [],  // 温感状态
+                        arr3: [],  // 控制器状态
+                        surge: null,
+                        smoke: [],
+                        temperature: [],
+                        controller: [],
+                        timer1: null,
+                        timer0: null
                     }
+                    clearTimeout(alarm.timer0)
+                    clearTimeout(alarm.timer1)
+                    $.post('./json/axis.json',function(result,state){
+                        alarm.surge = JSON.parse(result)
+                        if (state == 'success') {
+                            $.each(alarm.surge.List[0].equipInfo, function(index, val) {
+                                // 温感
+                                if (val.eqType == "02") {
+                                    // 连接正常
+                                    if (val.Quality == "OPC_QUALITY_GOOD") {
+                                        if (val.State == "0") {
+                                            alarm.arr1.push("normal")
+                                        } else if (val.State == "1") {
+                                            alarm.arr1.push("fire")
+                                        } else if (val.State == "4") {
+                                            alarm.arr1.push("fault")
+                                        }
+                                    } else if (val.Quality == "OPC_QUALITY_NOT_CONNECTED") {
+                                        alarm.arr1.push("interrupt")
+                                    }
+                                    // 烟感
+                                } else if (val.eqType == "03") {
+                                    if (val.Quality == "OPC_QUALITY_GOOD") {
+                                        if (val.State == "0") {
+                                            alarm.arr2.push("normal")
+                                        } else if (val.State == "1") {
+                                            alarm.arr2.push("fire")
+                                        } else if (val.State == "4") {
+                                            alarm.arr2.push("fault")
+                                        }
+                                    } else if (val.Quality == "OPC_QUALITY_NOT_CONNECTED") {
+                                        alarm.arr2.push("interrupt")
+                                    }
+                                    // 控制器
+                                } else if (val.eqType == "25" || "29") {
+                                    if (val.Quality == "OPC_QUALITY_GOOD") {
+                                        if (val.State == "0") {
+                                            alarm.arr3.push("normal")
+                                        } else if (val.State == "1") {
+                                            alarm.arr3.push("fire")
+                                        } else if (val.State == "4") {
+                                            alarm.arr3.push("fault")
+                                        }
+                                    } else if (val.Quality == "OPC_QUALITY_NOT_CONNECTED") {
+                                        alarm.arr3.push("interrupt")
+                                    }
+                                }
+                            })
+                            // 筛选数组
+                            for (let i = 0,l = three.scene.children.length;i < l;i++){
+                                let name = three.scene.children[i].name
+                                if (name.substr(0,name.length-2) == `smoke`){
+                                    alarm.smoke.push(three.scene.children[i])
+                                } else if (name.substr(0,name.length-2) == `temperature`){
+                                    alarm.temperature.push(three.scene.children[i])
+                                } else if (name.substr(0,name.length-2) == `controller`){
+                                    alarm.controller.push(three.scene.children[i])
+                                }
+                            }
+                            // 闪光
+                            for(let i = 0,l = alarm.smoke.length;i < l;i++){
+                                debugger
+                                console.log("1-1")
+                                blink(alarm.arr1[i],alarm.smoke[i].children[2])
+                            }
+                            for(let i = 0,l = alarm.temperature.length;i < l;i++){
+                                blink(alarm.arr2[i],alarm.temperature[i].children[2])
+                            }
+                            for(let i = 0,l = alarm.controller.length;i < l;i++){
+                                blink(alarm.arr3[i],alarm.controller[i].children[0])
+                            }
+                        }
+                    })
+                    alarm.timer0 = setTimeout(() => {
+                        animate()
+                    }, 10000)
+                }
+                // 闪光动画
+                let blink = (flag,equip) => {
+                        let colorindex = 0,
+                            colorArray = []
+                        if (flag == "interrupt") {
+                            colorArray = [0xe8e8e8, 0xeeee00]
+                            let timer1 = () => {
+                                console.log("1")
+                                colorindex++
+                                if (colorindex == 3) {
+                                    colorindex = 0
+                                }
+                                equip.material.color.set(colorArray[colorindex])
+                                setTimeout(() => {timer1()}, 500)
+                            }
+                        } else if (flag == "fault") {
+                            colorArray = [0xe8e8e8, 0xff8247]
+                            let timer2 = () => {
+                                colorindex++
+                                if (colorindex == 3) {
+                                    colorindex = 0
+                                }
+                                equip.material.color.set(colorArray[colorindex])
+                                setTimeout(() => {timer2()}, 500)
+                            }
+                        } else if (flag == "fire") {
+                            colorArray = [0xe8e8e8, 0xee0000]
+                            let timer3 = () => {
+                                console.log("2")
+                                colorindex++
+                                if (colorindex == 3) {
+                                    colorindex = 0
+                                }
+                                equip.material.color.set(colorArray[colorindex])
+                                setTimeout(() => {timer3()}, 500)
+                            }
+                        }
                 }
                 //初始化性能插件
                 let initStats = () => {
@@ -698,11 +783,11 @@
                 let loop = () => {
                     //更新性能插件
                     three.stats.update()
-
                     three.renderer.render(three.scene, three.camera) // 渲染器开始渲染, scene 和 camera 是必须参数, 因为场景里有动画, 所以放在 loop 里循环
                     requestAnimationFrame(loop)
                 }
 
+                // 窗口自适应
                 let onWindowResize = () => {
                     window.addEventListener('resize', function() {
                         three.camera.aspect = three.width / three.height
@@ -717,16 +802,14 @@
                     initRender()
                     initLight()
                     initModel()
-                    // animate()
+                    animate()
                     initControls()
                     initStats()
                     loop()
-                    debugger
                     onWindowResize()
                 }
 
                 draw()
-
             }
         }())
     </script>
