@@ -16,6 +16,7 @@
     <script type="text/javascript" src="js/Detector.js"></script>
     <script type="text/javascript" src="js/OrbitControls.js"></script>
     <script type="text/javascript" src="js/stats.min.js"></script>
+    <script type="text/javascript" src="js/dat.gui.min.js"></script>
     <script type="text/javascript">
         (function() {
             // 严格模式
@@ -24,7 +25,6 @@
             window.onload = () => {
                 init()
             }
-
             let init = () => {
                 let surge,  // Json 数据
                     props = {
@@ -83,7 +83,10 @@
                         width: null,
                         height: null,
                         states: null,
-                        background: 0x1e1e24
+                        background: 0x1e1e24,
+                        helper: null,
+                        gui: null,
+                        datGui: null
                     },
                     geometry = null,
                     material = null,
@@ -110,6 +113,21 @@
                 let initScene = () => {
                     three.scene = new THREE.Scene()
                     three.scene.position.z = 120
+                }
+
+                //初始化dat.GUI简化试验流程
+                function initGui() {
+                    //声明一个保存需求修改的相关数据的对象
+                    three.gui = {
+                        x:0,
+                        y:0,
+                        z:120
+                    }
+                    three.datGui = new dat.GUI()
+                    //将设置属性添加到gui当中，gui.add(对象，属性，最小值，最大值）
+                    three.datGui.add(three.gui,"x",-500,500)
+                    three.datGui.add(three.gui,"y",-500,500)
+                    three.datGui.add(three.gui,"z",-500,500)
                 }
 
                 // 透视投影相机
@@ -150,6 +168,9 @@
                 }
 
                 let initModel = () => {
+                    // 辅助工具
+                    three.helper = new THREE.AxisHelper(1000)
+                    three.scene.add(three.helper)
                     // 文字模型
                     let fontModel = (fontPositionArr,describArr) => {
                         loader = new THREE.FontLoader()
@@ -768,6 +789,12 @@
                     //更新性能插件
                     three.stats.update()
                     three.renderer.render(three.scene, three.camera) // 渲染器开始渲染, scene 和 camera 是必须参数, 因为场景里有动画, 所以放在 loop 里循环
+                    //更新相关位置
+                    three.scene.position.x = three.gui.x
+                    three.scene.position.y = three.gui.y
+                    three.scene.position.z = three.gui.z
+
+                    three.controls.update()
                     requestAnimationFrame(loop)
                 }
 
@@ -781,7 +808,10 @@
                 }
 
                 let draw = () => {
+                    // 兼容性判断
+                    if (!Detector.webgl) Detector.addGetWebGLMessage()
                     initScene()
+                    initGui()
                     initCamera()
                     initRender()
                     initLight()
