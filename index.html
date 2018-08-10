@@ -20,15 +20,6 @@
         (function() {
             // 严格模式
             'use strict'
-            // 常量空间
-            const axisJson = {
-
-            }
-
-            // 变量空间
-            let finder = {
-
-            }
 
             window.onload = () => {
                 init()
@@ -44,6 +35,10 @@
                         temperaturePositionArr: [],  // 温感位置
                         controllerPositionArr: [],  // 控制器位置
                         fontPositionArr: []  // 名称位置
+                    },
+                    finder = {
+                        timer0: null,
+                        timer1: null
                     }
                 $.post('./json/axis.json',function(result,state){
                     surge = JSON.parse(result)
@@ -71,14 +66,14 @@
                                 props.controllerPositionArr.push(val.EQ_COORDINATE.split(","))
                             }
                         })
-                        workshop(props)
+                        workshop(props,finder)
                     } else {
                         console.log('axisJson 数据异常')
                     }
                 })
             }
 
-            let workshop = (props) => {
+            let workshop = (props,finder) => {
                 let three = {
                         scene: null,
                         camera: null,
@@ -575,7 +570,7 @@
                         model.position.set(0, 107, 21)
                         object.add(model)
 
-                        // 控制器按钮
+                        // 控制器按钮组
                         geometry = new THREE.BoxGeometry(10,6,0.5)
                         material = new THREE.MeshPhongMaterial({
                             color: 0x4a708b
@@ -629,12 +624,9 @@
                         surge: null,
                         smoke: [],
                         temperature: [],
-                        controller: [],
-                        timer1: null,
-                        timer0: null
+                        controller: []
                     }
-                    clearTimeout(alarm.timer0)
-                    clearTimeout(alarm.timer1)
+                    // 请求闪光信息
                     $.post('./json/axis.json',function(result,state){
                         alarm.surge = JSON.parse(result)
                         if (state == 'success') {
@@ -653,7 +645,7 @@
                                     } else if (val.Quality == "OPC_QUALITY_NOT_CONNECTED") {
                                         alarm.arr1.push("interrupt")
                                     }
-                                    // 烟感
+                                // 烟感
                                 } else if (val.eqType == "03") {
                                     if (val.Quality == "OPC_QUALITY_GOOD") {
                                         if (val.State == "0") {
@@ -666,7 +658,7 @@
                                     } else if (val.Quality == "OPC_QUALITY_NOT_CONNECTED") {
                                         alarm.arr2.push("interrupt")
                                     }
-                                    // 控制器
+                                // 控制器
                                 } else if (val.eqType == "25" || "29") {
                                     if (val.Quality == "OPC_QUALITY_GOOD") {
                                         if (val.State == "0") {
@@ -692,61 +684,53 @@
                                     alarm.controller.push(three.scene.children[i])
                                 }
                             }
-                            // 闪光
+                            // 烟感闪光
                             for(let i = 0,l = alarm.smoke.length;i < l;i++){
-                                debugger
-                                console.log("1-1")
                                 blink(alarm.arr1[i],alarm.smoke[i].children[2])
                             }
+                            // 温感闪光
                             for(let i = 0,l = alarm.temperature.length;i < l;i++){
                                 blink(alarm.arr2[i],alarm.temperature[i].children[2])
                             }
+                            // 控制器闪光
                             for(let i = 0,l = alarm.controller.length;i < l;i++){
                                 blink(alarm.arr3[i],alarm.controller[i].children[0])
                             }
+                        } else {
+                            console.log('axisJson 数据异常')
                         }
                     })
-                    alarm.timer0 = setTimeout(() => {
+                    // 10s请求数据
+                    finder.timer0 = setTimeout(() => {
+                        clearTimeout(finder.timer1)
                         animate()
                     }, 10000)
                 }
                 // 闪光动画
                 let blink = (flag,equip) => {
-                        let colorindex = 0,
-                            colorArray = []
-                        if (flag == "interrupt") {
-                            colorArray = [0xe8e8e8, 0xeeee00]
-                            let timer1 = () => {
-                                console.log("1")
-                                colorindex++
-                                if (colorindex == 3) {
-                                    colorindex = 0
-                                }
-                                equip.material.color.set(colorArray[colorindex])
-                                setTimeout(() => {timer1()}, 500)
-                            }
-                        } else if (flag == "fault") {
-                            colorArray = [0xe8e8e8, 0xff8247]
-                            let timer2 = () => {
-                                colorindex++
-                                if (colorindex == 3) {
-                                    colorindex = 0
-                                }
-                                equip.material.color.set(colorArray[colorindex])
-                                setTimeout(() => {timer2()}, 500)
-                            }
-                        } else if (flag == "fire") {
-                            colorArray = [0xe8e8e8, 0xee0000]
-                            let timer3 = () => {
-                                console.log("2")
-                                colorindex++
-                                if (colorindex == 3) {
-                                    colorindex = 0
-                                }
-                                equip.material.color.set(colorArray[colorindex])
-                                setTimeout(() => {timer3()}, 500)
-                            }
+                    let colorindex = 0,
+                        colorArray = []
+                    if (flag == "interrupt") {
+                        colorArray = [0xe8e8e8, 0xeeee00]
+                        timer(colorindex,colorArray)
+                    } else if (flag == "fault") {
+                        colorArray = [0xe8e8e8, 0xff8247]
+                        timer(colorindex,colorArray)
+                    } else if (flag == "fire") {
+                        colorArray = [0xe8e8e8, 0xee0000]
+                        timer(colorindex,colorArray)
+                    }
+                    // 颜色更替
+                    function timer(colorindex,colorArray) {
+                        colorindex++
+                        if (colorindex == 2) {
+                            colorindex = 0
                         }
+                        equip.material.color.set(colorArray[colorindex])
+                        finder.timer1 = setTimeout(() => {
+                            timer(colorindex,colorArray)
+                        }, 1000)
+                    }
                 }
                 //初始化性能插件
                 let initStats = () => {
@@ -808,7 +792,7 @@
                     loop()
                     onWindowResize()
                 }
-
+                // 执行函数
                 draw()
             }
         }())
