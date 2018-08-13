@@ -1,7 +1,6 @@
 # 3D-Electrical-Room
 3D electrical room bulit using Three.js
 
------
 > 注：如果您的浏览器出现场景无法加载的情况，原因为浏览器加载本地 json 等文件资源发生跨域请求的原因
 > 可参照以下方法得以解决 [如何解决浏览器加载本地文件跨域问题](https://segmentfault.com/a/1190000015887146)
 

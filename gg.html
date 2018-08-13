@@ -1,0 +1,21 @@
+function clearThree(obj){
+    for(let i =obj.children.length-1;i>-1;i--){
+        if(obj.children[i].type == 'Object3D'){
+            for(let q =obj.children[i].children.length-1;q >-1 ;q--){
+                if(obj.children[i].children[q].material.map){obj.children[i].children[q].material.map.dispose()}
+                obj.children[i].children[q].geometry.dispose()
+                obj.children[i].children[q].material.dispose()
+                obj.children[i].remove(obj.children[i].children[q])
+            }
+        }else if(obj.children[i].type == 'Mesh'){
+            if(obj.children[i].material.map){obj.children[i].material.map.dispose()}
+            obj.children[i].geometry.dispose()
+            obj.children[i].material.dispose()
+        }else if(obj.children[i].type == 'LineSegments'){
+            obj.children[i].geometry.dispose()
+            obj.children[i].material.dispose()
+        }
+
+        obj.remove(obj.children[i])
+    }
+}
